@@ -135,13 +135,6 @@ export default {
 		}
 		// 处理上传的图片
 		if (request.method === 'POST') {
-			// 读取上传的文件
-			// const formData = await request.formData();
-			// const file = formData.get('file');
-			// console.log('file:', file);
-			// if (!file) {
-			// 	return new Response('No file uploaded', { status: 400 });
-			// }
 			const imageRes = new Response(request.body);
 			const query = queryString.parse(new URL(request.url).search);
 			const { action = '', format = 'webp', quality = 89 } = query;
