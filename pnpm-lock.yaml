@@ -13,6 +13,18 @@ importers:
 
   .:
     dependencies:
+      '@jsquash/avif':
+        specifier: ^2.0.0
+        version: 2.0.0
+      '@jsquash/jpeg':
+        specifier: ^1.5.0
+        version: 1.5.0
+      '@jsquash/png':
+        specifier: ^3.0.1
+        version: 3.0.1
+      '@jsquash/resize':
+        specifier: ^2.1.0
+        version: 2.1.0
       '@jsquash/webp':
         specifier: ^1.4.0
         version: 1.4.0
@@ -351,6 +363,18 @@ packages:
 
   '@jridgewell/trace-mapping@0.3.9':
     resolution: {integrity: sha512-3Belt6tdc8bPgAtbcmdtNJlirVoTmEb5e2gC94PnkwEW9jI6CAHUeoG85tjWP5WquqfavoMtMwiG4P926ZKKuQ==}
+
+  '@jsquash/avif@2.0.0':
+    resolution: {integrity: sha512-Gu1S4PCNpZvKXdenpyFUa9pVG4XdAPpTR/H1prr78WQLIKmbBoTkH6Nyf4qrSiNrQFqteyHeFrILsysXD6YRWg==}
+
+  '@jsquash/jpeg@1.5.0':
+    resolution: {integrity: sha512-Jam3X9BhbP1f+d58TfYobV/ZpYhCnawBF7YMS0Vt5Gi1v5Rk+xUdqYiZarAn0PwAzy2Zm2pPU/VzXHsLhwT9QQ==}
+
+  '@jsquash/png@3.0.1':
+    resolution: {integrity: sha512-Bnvv93Y5LL92cuk2r2gpV+9JKuDo2/w7bOODw1iPxk8VARknky0sS1tSDgMosUdhNb4CdMlcCm3TMzTaqa3zZw==}
+
+  '@jsquash/resize@2.1.0':
+    resolution: {integrity: sha512-UxF45pe5a84GrleHichsnGHyFAJhOu4Ms9L1UQYXhhmDifRm4U3pMEzgly+m3xDe+h4XZyDlpr9f8FBB1LZ+LA==}
 
   '@jsquash/webp@1.4.0':
     resolution: {integrity: sha512-yKJb6Hilq+qV/4C4qTDEalBobNwJO09LeHHtilmWg5mYHFUDwMunfeAap/r3cL5KsHkGOoI0IjY2nKbTaHq9Bw==}
@@ -762,6 +786,16 @@ snapshots:
     dependencies:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.0
+
+  '@jsquash/avif@2.0.0':
+    dependencies:
+      wasm-feature-detect: 1.6.1
+
+  '@jsquash/jpeg@1.5.0': {}
+
+  '@jsquash/png@3.0.1': {}
+
+  '@jsquash/resize@2.1.0': {}
 
   '@jsquash/webp@1.4.0':
     dependencies:

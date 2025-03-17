@@ -1,148 +1,65 @@
 import queryString from 'query-string';
-import * as photon from '@silvia-odwyer/photon';
-import PHOTON_WASM from '../node_modules/@silvia-odwyer/photon/photon_rs_bg.wasm';
-import encodeWebp, { init as initWebpWasm } from '@jsquash/webp/encode';
-import WEBP_ENC_WASM from '../node_modules/@jsquash/webp/codec/enc/webp_enc.wasm';
-// 图片处理
-const photonInstance = await WebAssembly.instantiate(PHOTON_WASM, {
-	'./photon_rs_bg.js': photon
-});
-photon.setWasm(photonInstance.exports); // need patch
-await initWebpWasm(WEBP_ENC_WASM);
-const OUTPUT_FORMATS = {
-	jpeg: 'image/jpeg',
-	jpg: 'image/jpeg',
-	png: 'image/png',
-	webp: 'image/webp'
-};
-const multipleImageMode = ['watermark', 'blend'];
-const inWhiteList = (env, url) => {
-	const imageUrl = new URL(url);
-	const whiteList = env.WHITE_LIST ? env.WHITE_LIST.split(',') : [];
-	return !(whiteList.length && !whiteList.find((hostname) => imageUrl.hostname.endsWith(hostname)));
-};
-const processImage = async(env, request, inputImage, pipeAction) => {
-	const [action, options = ''] = pipeAction.split('!');
-	const params = options.split(',');
-	if (multipleImageMode.includes(action)) {
-		const image2 = params.shift(); // 是否需要 decodeURIComponent ?
-		if (image2 && inWhiteList(env, image2)) {
-			const image2Res = await fetch(image2, { headers: request.headers });
-			if (image2Res.ok) {
-				const inputImage2 = photon.PhotonImage.new_from_byteslice(new Uint8Array(await image2Res.arrayBuffer()));
-				// 多图处理是处理原图
-				photon[action](inputImage, inputImage2, ...params);
-				return inputImage; // 多图模式返回第一张图
-			}
-		}
-	} else {
-		return photon[action](inputImage, ...params);
-	}
-};
-// 处理逻辑
-const imageProcess = async(env, request, props) => {
-	const { imageRes, action, format, quality, cache, cacheKey, context } = props;
-	// 获取请求参数
-	const imageBytes = new Uint8Array(await imageRes.arrayBuffer());
+import { decodeImage, formatToWebp, resizeImage } from './utils/jsquash.js';
+//
+const MONTH_IN_SECONDS = 30 * 24 * 60 * 60;
+const CDN_CACHE_AGE = 6 * MONTH_IN_SECONDS; // 6 Months
+//
+async function handleRequest(request, env, context) {
 	try {
-		const inputImage = photon.PhotonImage.new_from_byteslice(imageBytes);
-		console.log('create inputImage done');
-		/** pipe
-		 * `resize!800,400,1|watermark!https%3A%2F%2Fmt.ci%2Flogo.png,10,10,10,10`
-		 */
-		const pipe = action.split('|');
-		const outputImage = await pipe.filter(Boolean).reduce(async(result, pipeAction) => {
-			result = await result;
-			return (await processImage(env, request, result, pipeAction)) || result;
-		}, inputImage);
-		console.log('create outputImage done');
-		// 图片编码
-		let outputImageData;
-		if (format === 'jpeg' || format === 'jpg') {
-			outputImageData = outputImage.get_bytes_jpeg(quality);
-		} else if (format === 'png') {
-			outputImageData = outputImage.get_bytes();
-		} else {
-			outputImageData = await encodeWebp(outputImage.get_image_data(), { quality });
-		}
-		console.log('create outputImageData done');
-		// 返回体构造
-		const imageResponse = new Response(outputImageData, {
-			headers: {
-				'content-type': OUTPUT_FORMATS[format],
-				'cache-control': 'public,max-age=15552000,s-maxage=15552000'
-			}
-		});
-		// 释放资源
-		inputImage.ptr && inputImage.free();
-		outputImage.ptr && outputImage.free();
-		console.log('image free done');
-		// 写入缓存
-		context.waitUntil(cache.put(cacheKey, imageResponse.clone()));
-		return imageResponse;
-	} catch (error) {
-		console.error('process:error', error.name, error.message, error);
-		const errorResponse = new Response(imageBytes || null, {
-			headers: imageRes.headers,
-			status: 'RuntimeError' === error.name ? 415 : 500
-		});
-		return errorResponse;
-	}
-};
-// 响应图片
-export default {
-	//
-	async fetch(request, env, context) {
-		console.log('fetch: start', request);
 		// 判断请求方法
-		if (request.method === 'GET') {
-			// 读取缓存
-			const cacheUrl = new URL(request.url);
-			const cacheKey = new Request(cacheUrl.toString());
-			const cache = caches.default;
-			const hasCache = await cache.match(cacheKey);
-			if (hasCache) {
-				console.log('cache: true');
-				return hasCache;
-			}
-			// 入参提取与校验
-			const query = queryString.parse(new URL(request.url).search);
-			const { url = '', action = '', format = 'webp', quality = 99 } = query;
-			console.log('params:', url, action, format, quality);
-			if (!url) {
-				return new Response(null, {
-					status: 302,
-					headers: {
-						location: 'https://github.com/ccbikai/cloudflare-worker-image'
-					}
-				});
-			}
-			// 白名单检查
-			if (!inWhiteList(env, url)) {
-				console.log('whitelist: false');
-				return new Response(null, {
-					status: 403
-				});
-			}
-			// 目标图片获取与检查
-			const imageRes = await fetch(url, { headers: request.headers });
-			if (!imageRes.ok) {
-				return imageRes;
-			}
-			console.log('fetch image done');
-			const props = { imageRes, action, format, quality, cache, cacheKey, context };
-			return await imageProcess(env, request, props);
+		const requestUrl = new URL(request.url);
+		const { url = '', action = '', format = 'webp', quality = 99 } = queryString.parse(requestUrl.search);
+		if (!url) {
+			return new Response('Not found', { status: 404 });
 		}
-		// 处理上传的图片
-		if (request.method === 'POST') {
-			const imageRes = new Response(request.body);
-			const query = queryString.parse(new URL(request.url).search);
-			const { action = '', format = 'webp', quality = 89 } = query;
-			console.log('params:', action, format, quality);
-			const props = { imageRes, action, format, quality, cache: caches.default, cacheKey: new Request(request.url), context };
-			return await imageProcess(env, request, props);
+		const extension = new URL(url).pathname.split('.').pop();
+		const isWebpSupported = request.headers.get('accept').includes('image/webp');
+		// const cacheKeyUrl = isWebpSupported ? requestUrl.toString().replace(`.${extension}`, '.webp') : requestUrl.toString();
+		const cacheKey = new Request(requestUrl);
+		const cache = caches.default;
+		const supportedExtensions = ['jpg', 'jpeg', 'png', 'avif'];
+		if (!supportedExtensions.includes(extension)) {
+			return new Response(`<doctype html>
+<title>Unsupported image format</title>
+<h1>Unsupported image format or missing image path</h1>
+<p>Supported formats: ${supportedExtensions.join(', ')}</p>
+<p>For this @jSquash Cloudflare Worker example you need to specify the image url as a path, e.g. <a href="/jamie.tokyo/images/compressed/spare-magnets.jpg">https://&lt;worker-url&gt;/jamie.tokyo/images/compressed/spare-magnets.jpg</a></p>
+    `, { status: 404, headers: { 'Content-Type': 'text/html' } });
 		}
-		// 其他方法拒绝
+		//
+		let response = await cache.match(cacheKey);
+		if (!response) {
+			// Assuming the pathname includes a full url, e.g. jamie.tokyo/images/compressed/spare-magnets.jpg
+			if (request.method === 'POST') {
+				response = new Response(request.body);
+			} else {
+				response = await fetch(url);
+			}
+			//
+			if (response.status !== 200) {
+				return new Response('Not found', { status: 404 });
+			}
+			if (isWebpSupported) {
+				const imageData = await decodeImage(await response.arrayBuffer(), extension);
+				const compressedImage = await resizeImage(imageData);
+				// @Note, we need to manually initialise the wasm module here from wasm import at top of file
+				const webpImage = await formatToWebp(compressedImage);
+				response = new Response(webpImage, response);
+				response.headers.set('Content-Type', 'image/webp');
+			}
+			response = new Response(response.body, response);
+			response.headers.append('Cache-Control', `s-maxage=${CDN_CACHE_AGE}`);
+			// Use waitUntil so you can return the response without blocking on
+			// writing to cache
+			context.waitUntil(cache.put(cacheKey, response.clone()));
+		}
+		return response;
+	} catch (e) {
 		return new Response('Method not allowed', { status: 405 });
 	}
+}
+// 图片处理 入口
+export default {
+	//
+	fetch: handleRequest
 };

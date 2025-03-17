@@ -13,6 +13,10 @@
     "wrangler": "^3.114.0"
   },
   "dependencies": {
+    "@jsquash/avif": "^2.0.0",
+    "@jsquash/jpeg": "^1.5.0",
+    "@jsquash/png": "^3.0.1",
+    "@jsquash/resize": "^2.1.0",
     "@jsquash/webp": "^1.4.0",
     "@silvia-odwyer/photon": "^0.3.2",
     "query-string": "^9.1.0"
