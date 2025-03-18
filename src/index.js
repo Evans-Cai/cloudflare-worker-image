@@ -6,11 +6,15 @@ const CDN_CACHE_AGE = 6 * MONTH_IN_SECONDS; // 6 Months
 //
 async function handleRequest(request, env, context) {
 	try {
+		console.log('request', request);
 		// 判断请求方法
 		const requestUrl = new URL(request.url);
-		const { url = '', action = '', format = 'webp', quality = 99 } = queryString.parse(requestUrl.search);
-		if (!url) {
+		let { url = '', action = '', format = 'webp', quality = 99 } = queryString.parse(requestUrl.search);
+		if (!url && request.method !== 'POST') {
+			console.log('Not found', requestUrl);
 			return new Response('Not found', { status: 404 });
+		} else {
+			url = requestUrl.origin + requestUrl.pathname
 		}
 		const extension = new URL(url).pathname.split('.').pop();
 		const isWebpSupported = request.headers.get('accept').includes('image/webp');
