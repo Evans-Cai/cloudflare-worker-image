@@ -1,6 +1,6 @@
 {
   "name": "image",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "private": true,
   "scripts": {
     "deploy": "wrangler deploy",
@@ -22,8 +22,5 @@
     "query-string": "^9.1.0"
   },
   "pnpm": {
-    "patchedDependencies": {
-      "@silvia-odwyer/photon@0.3.2": "patches/@silvia-odwyer__photon@0.3.2.patch"
-    }
   }
 }
