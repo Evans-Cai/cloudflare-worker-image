@@ -1,5 +1,5 @@
 import queryString from 'query-string';
-import { decodeImage, formatToWebp, resizeImage } from './utils/jsquash.js';
+import { decodeImage, formatToWebp, resizeImage } from 'functions/utils/jsquash.js';
 //
 const MONTH_IN_SECONDS = 30 * 24 * 60 * 60;
 const CDN_CACHE_AGE = 6 * MONTH_IN_SECONDS; // 6 Months
