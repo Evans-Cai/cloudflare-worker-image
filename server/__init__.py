@@ -8,6 +8,7 @@ from .routes.image import image_blue
 # 实例化，可视为固定格式
 app = Flask(__name__)
 app.config['API_KEY'] = os.environ.get('API_KEY', '123456')
+# 获取环境变量中的API_KEY
 API_KEY = app.config['API_KEY']
 
 
@@ -43,3 +44,6 @@ if __name__ == "__main__":
 	app = create_app()
 	# 启动服务
 	app.run(debug=True, port=os.getenv("PORT", default=5000))
+
+# 在模块中定义 __all__ 变量，可以控制 from module import * 时哪些变量会被导出
+__all__ = ["create_app"]

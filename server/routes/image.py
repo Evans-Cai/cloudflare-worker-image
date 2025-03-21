@@ -64,3 +64,7 @@ def convert_to_format(image_format):
 		return send_file(converted_image, mimetype=f'image/{image_format.lower()}')
 	except Exception as e:
 		return f"Failed to convert image: {str(e)}", 500
+
+
+# 在模块中定义 __all__ 变量，可以控制 from module import * 时哪些变量会被导出
+__all__ = ['image_blue']
